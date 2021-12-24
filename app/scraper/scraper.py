@@ -105,120 +105,53 @@ class DataScraper():
         return boxscores_df
 
     # Scraping DraftKings salary data from RotoGuru.com
-    def get_fantasy_salary(self, season, date_list, data_dir):
+    def get_fantasy_salary(self, date):
         url_roto = "http://rotoguru1.com/cgi-bin/hyday.pl?mon={month}&day={day}&year={year}&game=dk"
-        print("Scraping salary information from the {} regular season".format(season))
 
-        for date in date_list:
-            teams, positions, players, starters, salaries = [], [], [], [], []
+        teams, positions, players, starters, salaries = [], [], [], [], []
 
-            url_date = url_roto.format(month=date[4:6], day=date[6:8], year=date[0:4])
-            soup = BeautifulSoup(urlopen(url_date), 'lxml')
+        url_date = url_roto.format(month=date[4:6], day=date[6:8], year=date[0:4])
+        soup = BeautifulSoup(urlopen(url_date), 'lxml')
 
-            # Check if there were any games on a given date
-            soup_table = soup.find('body').find('table', border="0", cellspacing="5")
+        # Check if there were any games on a given date
+        soup_table = soup.find('body').find('table', border="0", cellspacing="5")
 
-            soup_rows = soup_table.find_all('tr')
+        soup_rows = soup_table.find_all('tr')
 
-            for row in soup_rows:
-                if row.find('td').has_attr('colspan') == False:
-                    if row.find('a').get_text() != '':
+        for row in soup_rows:
+            if row.find('td').has_attr('colspan') == False:
+                if row.find('a').get_text() != '':
 
-                        position = row.find_all('td')[0].get_text()
+                    position = row.find_all('td')[0].get_text()
 
-                        player_tmp = row.find('a').get_text().split(", ")
-                        player = player_tmp[1] + ' ' + player_tmp[0]
+                    player_tmp = row.find('a').get_text().split(", ")
+                    player = player_tmp[1] + ' ' + player_tmp[0]
 
-                        starter_tmp = row.find_all('td')[1].get_text()
-                        if '^' in starter_tmp:
-                            starter = 1
-                        else:
-                            starter = 0
+                    starter_tmp = row.find_all('td')[1].get_text()
+                    if '^' in starter_tmp:
+                        starter = 1
+                    else:
+                        starter = 0
 
-                        salary_tmp = row.find_all('td')[3].get_text()
-                        salary = re.sub('[$,]', '', salary_tmp)
+                    salary_tmp = row.find_all('td')[3].get_text()
+                    salary = re.sub('[$,]', '', salary_tmp)
 
-                        team = row.find_all('td')[4].get_text()
+                    team = row.find_all('td')[4].get_text()
 
-                        positions.append(position)
-                        players.append(player)
-                        starters.append(starter)
-                        salaries.append(salary)
-                        teams.append(team)
+                    positions.append(position)
+                    players.append(player)
+                    starters.append(starter)
+                    salaries.append(salary)
+                    teams.append(team)
 
-            df = pd.DataFrame({'Date': [date for i in range(len(players))],
-                               'Team': [team.upper() for team in teams],
-                               'Starter': starters,
-                               'Pos': positions,
-                               'Name': players,
-                               'Salary': salaries})
+        df = pd.DataFrame({'Date': [date for i in range(len(players))],
+                           'Team': [team.upper() for team in teams],
+                           'Starter': starters,
+                           'Pos': positions,
+                           'Name': players,
+                           'Salary': salaries})
 
-            df = df.loc[:, ['Date', 'Team', 'Pos', 'Name', 'Starter', 'Salary']]
-
-            df.to_csv(os.path.join(data_dir, 'DKSalary', season, 'salary_' + date + '.csv'), index=False)
+        df = df.loc[:, ['Date', 'Team', 'Pos', 'Name', 'Starter', 'Salary']]
 
         time.sleep(1)
-        return None
-
-# start_date = '20191022'
-# end_date = '20200311'
-# season = '2019-20'
-# date_list = [d.strftime('%Y%m%d') for d in pd.date_range(start_date,end_date)]
-# data_dir = '/Users/admin/Documents/Data Science/Project Answer/dev/data/'
-# # season_dates = {
-# #     '2014-15': ['20141028', '20150415'],
-# #     '2015-16': ['20151027', '20160413'],
-# #     '2016-17': ['20161025', '20170412'],
-# #     '2017-18': ['20171017', '20180411'],
-# #     '2018-19': ['20181016', '20190410'],
-# #     '2019-20': ['20191022', '20200410']
-# # }
-#
-# season_dates = {
-#     # '2018-19': ['20190201', '20190410'],
-#     # '2020-21': ['20201222', '20210406'],
-#     '2021-22': ['20211019', '20211020']
-# }
-#
-# scraper = DataScraper()
-
-# Comment out season dates in SEASON_DATES in constants.py to extract data for specific seasons
-# for data_type in ['Boxscores', 'DKSalary']:
-#     for season in season_dates.keys():
-#         if not os.path.exists(os.path.join(data_dir, data_type, season)):
-#             # Create a new directory and scrape the entire season
-#             os.mkdir(os.path.join(data_dir, data_type, season))
-#             start_date = season_dates[season][0]
-#             end_date = season_dates[season][1]
-#             date_list = [d.strftime('%Y%m%d') for d in pd.date_range(start_date, end_date)]
-#
-#             if data_type == 'Boxscores':
-#                 scraper.get_boxscores(season, date_list, data_dir)
-#             else:
-#                 scraper.get_fantasy_salary(season, date_list, data_dir)
-#
-#         elif os.path.exists(os.path.join(data_dir, data_type, season)):
-#             # Iterate over the existing files by name and scrape missing dates
-#             start_date = season_dates[season][0]
-#             end_date = season_dates[season][1]
-#             # Dates to scrape box scores from
-#             date_list = [d.strftime('%Y%m%d') for d in pd.date_range(start_date, end_date)]
-#
-#             if data_type == 'Boxscores':
-#                 for date in date_list:
-#                     # Check if csv files of the form {date}-{hometeam}.csv (i.e. 20131029-CHI.csv) exists
-#                     if len(glob.glob(os.path.join(data_dir, data_type, season, str(date) + "*.csv"))) > 0:
-#                         # Set back the start day by
-#                         date_list = date_list[date_list.index(date):]
-#
-#                 scraper.get_boxscores(season, date_list, data_dir)
-#
-#             else:
-#                 for date in date_list:
-#                     # Check if csv files of the form salary_{date}.csv (i.e. salary_20131029.csv) exists
-#                     if os.path.exists(os.path.join(data_dir, data_type, season, "salary_{}.csv".format(date))):
-#                         date_list = date_list[date_list.index(date):]
-#
-#                 scraper.get_fantasy_salary(season, date_list, data_dir)
-
-
+        return df
